@@ -426,6 +426,79 @@ public class ProductApi {
   }
 
   /**
+   * This API retrieves products for a given category that are discounted by at least <discountrate>%
+   * @param lang
+   * @param category
+   * @param merchantStore
+   * @param language
+   * @param request
+   * @param response
+   * @return ReadableProductList
+   * @throws Exception
+   */
+
+  @RequestMapping(value = "/products/recommended", method = RequestMethod.GET)
+  @ResponseBody
+  @ApiImplicitParams({
+          @ApiImplicitParam(name = "store", dataType = "String", defaultValue = "DEFAULT"),
+          @ApiImplicitParam(name = "lang", dataType = "String", defaultValue = "en")
+  })
+  public ReadableProductList recommendedProductLis(
+          @RequestParam(value = "lang", required = true) String lang,
+          @RequestParam(value = "category", required = true) Long category,
+          @RequestParam(value = "manufacturer", required = false) Long manufacturer,
+          @RequestParam(value = "status", required = false) String status,
+          @RequestParam(value = "owner", required = false) Long owner,
+          @RequestParam(value = "start", required = false) Integer start,
+          @RequestParam(value = "count", required = false) Integer count,
+          @ApiIgnore MerchantStore merchantStore,
+          @ApiIgnore Language language,
+          HttpServletRequest request,
+          HttpServletResponse response)
+          throws Exception {
+
+    ProductCriteria criteria = new ProductCriteria();
+    if (lang != null) {
+      criteria.setLanguage(lang);
+    } else {
+      criteria.setLanguage(language.getCode());
+    }
+    if (!StringUtils.isBlank(status)) {
+      criteria.setStatus(status);
+    }
+    if (category != null) {
+      List<Long> categoryIds = new ArrayList<Long>();
+      categoryIds.add(category);
+      criteria.setCategoryIds(categoryIds);
+    }
+    if (manufacturer != null) {
+      criteria.setManufacturerId(manufacturer);
+    }
+
+    if (owner != null) {
+      criteria.setOwnerId(owner);
+    }
+
+    if (start != null) {
+      criteria.setStartIndex(start);
+    }
+    if (count != null) {
+      criteria.setMaxCount(count);
+    }
+
+    try {
+      return productFacade.getRecommendedProductListsByCriterias(merchantStore, language, criteria, "20");
+    } catch (Exception e) {
+      LOGGER.error("Error while filtering products product", e);
+      try {
+        response.sendError(503, "Error while filtering products " + e.getMessage());
+      } catch (Exception ignore) {
+      }
+      return null;
+    }
+  }
+
+  /**
    * API for getting a product
    *
    * @param id

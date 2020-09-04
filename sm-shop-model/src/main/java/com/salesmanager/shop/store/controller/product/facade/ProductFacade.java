@@ -118,7 +118,27 @@ public interface ProductFacade {
   ReadableProductList getProductListsByCriterias(MerchantStore store, Language language,
       ProductCriteria criterias) throws Exception;
 
+  /**
+   * Filters a list of discounted (at least <discountRate>%) product based on criteria
+   * @param store
+   * @param language
+   * @param criterias
+   * @param discountRate
+   * @return ReadableProductList
+   * @throws Exception
+   */
+  ReadableProductList getRecommendedProductListsByCriterias(MerchantStore store, Language language,
+                                                            ProductCriteria criterias, String discountRate) throws Exception;
 
+  /**
+   * Verifies that a product can be discounted
+   * @param readableProduct
+   * @param discountRate
+   * @return boolean
+   * @throws Exception
+   */
+  boolean canBeRecommended(ReadableProduct readableProduct, String discountRate)
+          throws Exception;
   /**
    * Adds a product to a category
    * 

@@ -1,5 +1,6 @@
 package com.salesmanager.shop.store.facade.product;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -290,6 +291,87 @@ public class ProductFacadeImpl implements ProductFacade {
 
 
     return productList;
+  }
+
+  @Override
+  public ReadableProductList getRecommendedProductListsByCriterias(MerchantStore store, Language language, ProductCriteria criterias, String discountRate) throws Exception {
+    Validate.notNull(criterias, "ProductCriteria must be set for this product");
+
+    /** This is for category **/
+    if (CollectionUtils.isNotEmpty(criterias.getCategoryIds())) {
+
+      if (criterias.getCategoryIds().size() == 1) {
+
+        com.salesmanager.core.model.catalog.category.Category category =
+                categoryService.getById(criterias.getCategoryIds().get(0));
+
+        if (category != null) {
+          String lineage = new StringBuilder().append(category.getLineage()).toString();
+
+          List<com.salesmanager.core.model.catalog.category.Category> categories =
+                  categoryService.getListByLineage(store, lineage);
+
+          List<Long> ids = new ArrayList<Long>();
+          if (categories != null && categories.size() > 0) {
+            for (com.salesmanager.core.model.catalog.category.Category c : categories) {
+              ids.add(c.getId());
+            }
+          }
+          ids.add(category.getId());
+          criterias.setCategoryIds(ids);
+        }
+      }
+    }
+
+    com.salesmanager.core.model.catalog.product.ProductList products =
+            productService.listByStore(store, language, criterias);
+
+
+    ReadableProductPopulator populator = new ReadableProductPopulator();
+    populator.setPricingService(pricingService);
+    populator.setimageUtils(imageUtils);
+
+
+    ReadableProductList productList = new ReadableProductList();
+    for (Product product : products.getProducts()) {
+
+      // create new proxy product
+      ReadableProduct readProduct =
+              populator.populate(product, new ReadableProduct(), store, language);
+      if(canBeRecommended(readProduct, discountRate)){
+        productList.getProducts().add(readProduct);
+      }
+
+    }
+
+    productList.setTotalCount(products.getTotalCount());
+
+
+    return productList;
+  }
+
+  @Override
+  public boolean canBeRecommended(ReadableProduct readableProduct, String discountRate) throws Exception {
+    if(!readableProduct.isDiscounted()){ // the product is not discounted
+      return false;
+    }else{ // compute the discounted price and compare to 20% of the original price
+      try{
+        BigDecimal originalPrice = new BigDecimal(readableProduct.getOriginalPrice().substring(1));
+        BigDecimal finalPrice = new BigDecimal(readableProduct.getFinalPrice().substring(1));
+        BigDecimal difference = originalPrice.subtract(finalPrice);
+        BigDecimal discount = (originalPrice.multiply(new BigDecimal(discountRate))).divide(new BigDecimal("100"));
+        return difference.compareTo(discount) >= 0;
+
+        /*Double originalPrice = Double.parseDouble(readableProduct.getOriginalPrice());
+        Double finalPrice = Double.parseDouble(readableProduct.getFinalPrice());
+        Double difference = originalPrice - finalPrice;
+        Double rate = Double.parseDouble(discountRate);
+        Double discount = (originalPrice*rate)/100;
+        return difference - discount >= 0 ;*/
+      }catch(Exception e){
+        return false;
+      }
+    }
   }
 
   @Override
